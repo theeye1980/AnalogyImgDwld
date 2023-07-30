@@ -3,30 +3,32 @@ import json
 import time
 import requests
 import re
+from app.classes.ImageDownloader import ImageDownloader
 
 class RabbitQueueInformer:
     def __init__(self):
         with open('config.json') as f:
             config = json.load(f)
-        self.rabbit_host  = config['RABBIT_HOST']
+        self.rabbit_host = config['RABBIT_HOST']
+        self.rabbit_user = config['RABBIT_USER']
+        self.rabbit_pass = config['RABBIT_PASS']
+        credentials = pika.PlainCredentials(self.rabbit_user, self.rabbit_pass)
         self.connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=self.rabbit_host))
+            pika.ConnectionParameters(host=self.rabbit_host, credentials=credentials))
         self.channel = self.connection.channel()
-        self.rabbit_user = 'guest'
-        self.rabbit_password = 'guest'
         self.queue_list = ''
 
 
     def rest_queue_list(self, port=15672, virtual_host=None):
         url = 'http://%s:%s/api/queues/%s' % (self.rabbit_host, port, virtual_host or '')
-        response = requests.get(url, auth=(self.rabbit_user, self.rabbit_password))
+        response = requests.get(url, auth=(self.rabbit_user, self.rabbit_pass))
         queues = [q['name'] for q in response.json()]
         self.queue_list = queues
         return queues
 
     def check_img_queue(self):
         correct_IMG_list = []
-        pattern = r'Img~~~\d+~~~\d+~~~\w+'
+        pattern = r'Images_to_download'
         for item in self.queue_list:
             if re.match(pattern, item):
                 print(f"Match found: {item}")
@@ -34,19 +36,13 @@ class RabbitQueueInformer:
         return correct_IMG_list
 
 
-class RabbitQueueTaskSender:
+class RabbitQueueTaskSender(RabbitQueueInformer):
     #Разбор и обработка данных из файла клиента
     #На входе url, далее сохраняем при инициализации класса, парсим и работаем с тем, что есть
     def __init__(self, task_queue):
-        with open('config.json') as f:
-            config = json.load(f)
-        self.rabbit_host  = config['RABBIT_HOST']
+        super().__init__()  # Call the __init__ method of the parent class
         self.task_queue = task_queue
-        self.connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=self.rabbit_host))
-        self.channel = self.connection.channel()
-
-        self.channel.queue_declare(queue=self.task_queue, durable=True)
+        self.channel.queue_declare(queue=task_queue, durable=True)
     def send_to_queue(self, msg):
         #message = ' '.join(f"Hello World! {time}"
         self.channel.basic_publish(
@@ -63,25 +59,23 @@ class RabbitQueueTaskSender:
         message_count = method.method.message_count
         return message_count
 
-class RabbitQueueConsumer:
+class RabbitQueueConsumer(RabbitQueueInformer):
     def __init__(self, task_queue):
-        with open('config.json') as f:
-            config = json.load(f)
-        self.rabbit_host = config['RABBIT_HOST']
-        self.connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=self.rabbit_host))
+        super().__init__()  # Call the __init__ method of the parent class
         self.task_queue = task_queue
-        self.channel = self.connection.channel()
         self.channel.queue_declare(queue=task_queue, durable=True)
 
         print(' [*] Waiting for messages. To exit press CTRL+C')
 
     def callback(self, ch, method, properties, body):
+
+        bd = body.decode()
         print(" [x] Received %r" % body.decode())
-        time.sleep(3)
-        time.sleep(body.count(b'.'))
+        time.sleep(0.05)
+        # time.sleep(body.count(b'.'))
         print(" [x] Done")
         ch.basic_ack(delivery_tag=method.delivery_tag)
+
 
     def start_consuming(self):
         self.channel.basic_qos(prefetch_count=1)

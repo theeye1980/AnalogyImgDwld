@@ -24,7 +24,6 @@ class ImageDownloader:
             print("Invalid URL. The URL should point to a JPEG file.")
             return
 
-
         try:
             # Fetch the image from the URL
             response = requests.get(url)
@@ -52,8 +51,6 @@ class ImageDownloader:
             # Resize and paste the original image onto the new image
             resized_image = image.resize((new_width, new_height))
             new_image.paste(resized_image, (x, y))
-
-
 
 
             # Save the new image as a JPEG file
