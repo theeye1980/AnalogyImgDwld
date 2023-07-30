@@ -64,9 +64,13 @@ class RabbitQueueTaskSender:
         return message_count
 
 class RabbitQueueConsumer:
-    def __init__(self, host, task_queue):
+    def __init__(self, task_queue):
+        with open('config.json') as f:
+            config = json.load(f)
+        self.rabbit_host = config['RABBIT_HOST']
         self.connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=host))
+            pika.ConnectionParameters(host=self.rabbit_host))
+        self.task_queue = task_queue
         self.channel = self.connection.channel()
         self.channel.queue_declare(queue=task_queue, durable=True)
 
@@ -81,7 +85,7 @@ class RabbitQueueConsumer:
 
     def start_consuming(self):
         self.channel.basic_qos(prefetch_count=1)
-        self.channel.basic_consume(queue='task_queue', on_message_callback=self.callback)
+        self.channel.basic_consume(queue=self.task_queue, on_message_callback=self.callback)
         self.channel.start_consuming()
 
 #examples
