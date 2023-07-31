@@ -5,9 +5,13 @@ from io import BytesIO
 import os
 
 class ImageDownloader:
-    #Занимается загрузкой изображений
+    #Занимается загрузкой изображений на
     def __init__(self):
         self.download_count = 0
+
+    @staticmethod
+    def create_folders(path):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
 
     def download_image(self):
         response = requests.get(self.url)
@@ -54,6 +58,7 @@ class ImageDownloader:
 
 
             # Save the new image as a JPEG file
+
             new_image.save(path, "JPEG")
 
             print("Image saved successfully.")

@@ -4,6 +4,7 @@ import time
 import requests
 import re
 from app.classes.ImageDownloader import ImageDownloader
+from app.classes.MinIOHandler import MinIOHandler
 
 class RabbitQueueInformer:
     def __init__(self):
@@ -64,6 +65,7 @@ class RabbitQueueConsumer(RabbitQueueInformer):
         super().__init__()  # Call the __init__ method of the parent class
         self.task_queue = task_queue
         self.channel.queue_declare(queue=task_queue, durable=True)
+        self.mini = MinIOHandler()
 
         print(' [*] Waiting for messages. To exit press CTRL+C')
 
@@ -71,9 +73,19 @@ class RabbitQueueConsumer(RabbitQueueInformer):
 
         bd = body.decode()
         print(" [x] Received %r" % body.decode())
-        time.sleep(0.05)
-        # time.sleep(body.count(b'.'))
+        json_data = json.loads(body)
+        time.sleep(0.1)
+        # Обработаем изображение
+        img_handle = ImageDownloader()
+        ImageDownloader.create_folders(json_data["path"])
+        # сохраним его на серваке
+        ImageDownloader.jpgTo224(json_data["pictureURL"], json_data["path"])
+        # и отправим в хранилище
+
+        self.mini.upload_file('analogimgs', json_data["path"])
+
         print(" [x] Done")
+
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
