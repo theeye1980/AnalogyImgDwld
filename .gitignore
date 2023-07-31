@@ -3,6 +3,7 @@ __pycache__/
 .idea
 *.zip
 static/
+*.jpg
 *.png
 *.webp
 config.json
