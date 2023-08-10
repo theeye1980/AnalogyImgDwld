@@ -74,7 +74,7 @@ class RabbitQueueConsumer(RabbitQueueInformer):
         bd = body.decode()
         print(" [x] Received %r" % body.decode())
         json_data = json.loads(body)
-        time.sleep(0.1)
+        time.sleep(0.05)
         # Обработаем изображение
         img_handle = ImageDownloader()
         ImageDownloader.create_folders(json_data["path"])
